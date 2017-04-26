@@ -69,7 +69,7 @@ class Route
         $method = $_SERVER['REQUEST_METHOD'];
         //ANY匹配所有方式
         if (isset(self::$routes['ANY'][$uri]))
-            self::$routes[$method] = array_merge(self::$routes[$method], self::$routes['ANY']);
+            self::$routes[$method] = array_merge(self::$routes['ANY'], self::$routes[$method]);
         //是否匹配到路由
         $found = false;
         if (isset(self::$routes[$method][$uri]))
