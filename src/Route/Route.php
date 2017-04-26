@@ -38,7 +38,7 @@ class Route
         $uri = '/' . ltrim($params[0], '/');
         $middleware = isset($params[2]) ? $params[1] : null;
         $callback = isset($params[2]) ? $params[2] : $params[1];
-        self::$routes[$uri] = [strtoupper($method), $middleware, $callback];
+        self::$routes[strtoupper($method)][$uri] = [$middleware, $callback];
     }
 
     /**定义错误路由
@@ -49,6 +49,17 @@ class Route
         self::$error_callback = $callback;
     }
 
+    /**自定义命名空间
+     * @param null $controller
+     * @param null $middle
+     */
+    public static function space($controller = null, $middle = null)
+    {
+        self::$controller_namespace = $controller;
+        self::$middleware_namespace = $middle;
+    }
+
+
     /**运行
      *
      */
@@ -56,60 +67,59 @@ class Route
     {
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         $method = $_SERVER['REQUEST_METHOD'];
+        //ANY匹配所有方式
+        if (isset(self::$routes['ANY'][$uri]))
+            self::$routes[$method] = array_merge(self::$routes[$method], self::$routes['ANY']);
         //是否匹配到路由
         $found = false;
-        if (isset(self::$routes[$uri]))
+        if (isset(self::$routes[$method][$uri]))
         {
-            $route = self::$routes[$uri];
-            //ANY 可以用来同时匹配所有方式
-            if ($route[0] == $method || $route[0] == 'ANY')
+            $route = self::$routes[$method][$uri];
+            $found = true;
+            //有中间件
+            if ($route[0] !== null)
             {
-                $found = true;
-                //有中间件
-                if ($route[1] !== null)
+                $middleware = $route[0];
+                //中间件运行结果
+                $middle_result = null;
+                //中间件是闭包函数
+                if ($middleware instanceof \Closure)
                 {
-                    $middleware = $route[1];
-                    //中间件运行结果
-                    $middle_result = null;
-                    //中间件是闭包函数
-                    if ($middleware instanceof \Closure)
-                    {
-                        $middle_result = $middleware();
-                    } else
-                    {
-                        $middle_arr = explode('@', $middleware);
-                        $middleware_class = self::$middleware_namespace . $middle_arr[0];
-                        $middleware_object = new $middleware_class();
-                        $middle_result = $middleware_object->$middle_arr[1]();
-                    }
-                    $controller = $route[2];
-                    //controller是一个闭包函数
-                    if ($controller instanceof \Closure)
-                    {
-                        $controller($middle_result);
-                    } else
-                    {
-                        $controller_arr = explode('@', $controller);
-                        $controller_class = self::$controller_namespace . $controller_arr[0];
-                        $controller_object = new $controller_class();
-                        $controller_object->$controller_arr[1]($middle_result);
-                    }
-
+                    $middle_result = $middleware();
                 } else
                 {
-                    //没有中间件，直接运行controller
-                    $controller = $route[2];
-                    //controller是一个闭包函数
-                    if ($controller instanceof \Closure)
-                    {
-                        $controller();
-                    } else
-                    {
-                        $controller_arr = explode('@', $controller);
-                        $controller_class = self::$controller_namespace . $controller_arr[0];
-                        $controller_object = new $controller_class();
-                        $controller_object->$controller_arr[1]();
-                    }
+                    $middle_arr = explode('@', $middleware);
+                    $middleware_class = self::$middleware_namespace . $middle_arr[0];
+                    $middleware_object = new $middleware_class();
+                    $middle_result = $middleware_object->$middle_arr[1]();
+                }
+                $controller = $route[1];
+                //controller是一个闭包函数
+                if ($controller instanceof \Closure)
+                {
+                    $controller($middle_result);
+                } else
+                {
+                    $controller_arr = explode('@', $controller);
+                    $controller_class = self::$controller_namespace . $controller_arr[0];
+                    $controller_object = new $controller_class();
+                    $controller_object->$controller_arr[1]($middle_result);
+                }
+
+            } else
+            {
+                //没有中间件，直接运行controller
+                $controller = $route[1];
+                //controller是一个闭包函数
+                if ($controller instanceof \Closure)
+                {
+                    $controller();
+                } else
+                {
+                    $controller_arr = explode('@', $controller);
+                    $controller_class = self::$controller_namespace . $controller_arr[0];
+                    $controller_object = new $controller_class();
+                    $controller_object->$controller_arr[1]();
                 }
             }
         }
@@ -118,7 +128,7 @@ class Route
         {
             $searches = array_keys(static::$patterns);
             $replaces = array_values(static::$patterns);
-            foreach (self::$routes as $route_uri => $route)
+            foreach (self::$routes[$method] as $route_uri => $route)
             {
                 if (strpos($route_uri, ':') !== false)
                 {
@@ -127,58 +137,54 @@ class Route
                 //正则匹配
                 if (preg_match('#^' . $route_uri . '$#', $uri, $matched))
                 {
-                    //ANY 可以用来同时匹配所有方式
-                    if ($route[0] == $method || $route[0] == 'ANY')
+                    $found = true;
+                    array_shift($matched);
+                    //有中间件
+                    if ($middleware = $route[0])
                     {
-                        $found = true;
-                        array_shift($matched);
-                        //有中间件
-                        if ($middleware = $route[1])
+                        //中间件运行结果
+                        $middle_result = null;
+                        //中间件是闭包函数
+                        if ($middleware instanceof \Closure)
                         {
-                            //中间件运行结果
-                            $middle_result = null;
-                            //中间件是闭包函数
-                            if ($middleware instanceof \Closure)
-                            {
-                                $middle_result = $middleware(...$matched);
-                            } else
-                            {
-                                $middle_arr = explode('@', $middleware);
-                                $middleware_class = self::$middleware_namespace . $middle_arr[0];
-                                $middleware_object = new $middleware_class();
-                                $middle_result = $middleware_object->$middle_arr[1](...$matched);
-                            }
-                            $controller = $route[2];
-                            //controller是一个闭包函数
-                            if ($controller instanceof \Closure)
-                            {
-                                $controller($middle_result, ...$matched);
-                            } else
-                            {
-                                $controller_arr = explode('@', $controller);
-                                $controller_class = self::$controller_namespace . $controller_arr[0];
-                                $controller_object = new $controller_class();
-                                $controller_object->$controller_arr[1]($middle_result, ...$matched);
-                            }
-
+                            $middle_result = $middleware(...$matched);
                         } else
                         {
-                            //没有中间件，直接运行controller
-                            $controller = $route[2];
-                            //controller是一个闭包函数
-                            if ($controller instanceof \Closure)
-                            {
-                                $controller(...$matched);
-                            } else
-                            {
-                                $controller_arr = explode('@', $controller);
-                                $controller_class = self::$controller_namespace . $controller_arr[0];
-                                $controller_object = new $controller_class();
-                                $controller_object->$controller_arr[1](...$matched);
-                            }
+                            $middle_arr = explode('@', $middleware);
+                            $middleware_class = self::$middleware_namespace . $middle_arr[0];
+                            $middleware_object = new $middleware_class();
+                            $middle_result = $middleware_object->$middle_arr[1](...$matched);
                         }
-                        break;
+                        $controller = $route[1];
+                        //controller是一个闭包函数
+                        if ($controller instanceof \Closure)
+                        {
+                            $controller($middle_result, ...$matched);
+                        } else
+                        {
+                            $controller_arr = explode('@', $controller);
+                            $controller_class = self::$controller_namespace . $controller_arr[0];
+                            $controller_object = new $controller_class();
+                            $controller_object->$controller_arr[1]($middle_result, ...$matched);
+                        }
+
+                    } else
+                    {
+                        //没有中间件，直接运行controller
+                        $controller = $route[1];
+                        //controller是一个闭包函数
+                        if ($controller instanceof \Closure)
+                        {
+                            $controller(...$matched);
+                        } else
+                        {
+                            $controller_arr = explode('@', $controller);
+                            $controller_class = self::$controller_namespace . $controller_arr[0];
+                            $controller_object = new $controller_class();
+                            $controller_object->$controller_arr[1](...$matched);
+                        }
                     }
+                    break;
                 }
             }
         }
@@ -198,7 +204,7 @@ class Route
             {
                 if (is_string(self::$error_callback))
                 {
-                    self::any($_SERVER['REQUEST_URI'], self::$error_callback);
+                    self::$method($_SERVER['REQUEST_URI'], self::$error_callback);
                     self::$error_callback = null;
                     self::run();
                     return;
