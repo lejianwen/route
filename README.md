@@ -3,7 +3,7 @@
 ~~~
 composer require "ljw/route": "dev-master"
 ~~~
-
+## 使用方式
 ~~~
 Route::$method($uri, $controller);
 Route::$method($uri, $middleware, $controller);
