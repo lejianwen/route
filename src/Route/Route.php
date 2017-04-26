@@ -18,7 +18,6 @@ namespace Ljw\Route;
  */
 class Route
 {
-    public static $halts = false;
     public static $routes = [];
     public static $patterns = [
         ':any' => '[^/]+',
@@ -26,8 +25,8 @@ class Route
         ':num' => '[0-9]+',
         ':all' => '.*'
     ];
-    public static $controller_namespace = 'app\\controllers\\';
-    public static $middleware_namespace = 'app\\middleware\\';
+    public static $controller_namespace = null;
+    public static $middleware_namespace = null;
     public static $error_callback;
 
     /**路由定义
@@ -50,12 +49,11 @@ class Route
         self::$error_callback = $callback;
     }
 
-    /**运行匹配
+    /**运行
      *
      */
     public static function run()
     {
-
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         $method = $_SERVER['REQUEST_METHOD'];
         //是否匹配到路由
@@ -72,7 +70,7 @@ class Route
                 {
                     $middleware = $route[1];
                     //中间件运行结果
-                    $middle_result = false;
+                    $middle_result = null;
                     //中间件是闭包函数
                     if ($middleware instanceof \Closure)
                     {
@@ -138,7 +136,7 @@ class Route
                         if ($middleware = $route[1])
                         {
                             //中间件运行结果
-                            $middle_result = false;
+                            $middle_result = null;
                             //中间件是闭包函数
                             if ($middleware instanceof \Closure)
                             {
@@ -194,6 +192,7 @@ class Route
                 self::$error_callback = function ()
                 {
                     http_response_code(404);
+                    echo '404 Not Found!';
                 };
             } else
             {
