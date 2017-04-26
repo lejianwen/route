@@ -1,13 +1,19 @@
 # 一个简单的路由工具
+
+* 项目地址 [https://github.com/lejianwen/route](https://github.com/lejianwen/route)
+
 ## 安装
+
 ~~~
 composer require "ljw/route": "dev-master"
 ~~~
 ## 使用方式
+
 ~~~
 Route::$method($uri, $controller);
 Route::$method($uri, $middleware, $controller);
 ~~~
+
 ## 基本使用
 
 ~~~php
@@ -20,6 +26,7 @@ Route::post('index/test', 'app\\middleware\\Index@test', 'app\\controllers\\Inde
 ~~~
 
 ## 命名空间自定义
+
 ~~~php
 use \Ljw\Route\Route;
 //定义控制器和中间件的命名空间
@@ -51,6 +58,7 @@ Route::get('index/index',function(){
 
 
 ## 错误处理
+
 ~~~php
 //错误处理
 Route::error(function (){
@@ -99,18 +107,23 @@ class IndexController{
 
 # TIPS
 1. 路由只有在匹配不到的时候才会匹配正则,正则如果也匹配不到则会调用error
+
 ~~~php
 Route::get('index/test', 'IndexController@test');
 Route::get('index/(:str)', 'IndexController@index');
 //GET /index/test时，会匹配第一条
 ~~~
+
 2. 相同的路由规则,后面的路由会覆盖前面的
+
 ~~~php
 Route::get('index/test', 'IndexController@test');
 Route::get('index/test', 'IndexController@index');
 //GET /index/test时，会匹配第二条
 ~~~
+
 3. 方式any中的路由优先级低于get,post等具体方式
+
 ~~~php
 Route::any('index/test', 'IndexController@any');
 Route::get('index/test', 'IndexController@test');
