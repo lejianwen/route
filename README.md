@@ -1,4 +1,9 @@
 # 一个简单的路由工具
+## 安装
+~~~
+composer require "ljw/route": "dev-master"
+~~~
+
 ~~~
 Route::$method($uri, $controller);
 Route::$method($uri, $middleware, $controller);
