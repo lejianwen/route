@@ -35,7 +35,7 @@ class Route
      */
     public static function __callstatic($method, $params)
     {
-        $uri = '/' . trim($params[0], '/');
+        $uri = '/' . ltrim($params[0], '/');
         $middleware = isset($params[2]) ? $params[1] : null;
         $callback = isset($params[2]) ? $params[2] : $params[1];
         self::$routes[$uri] = [strtoupper($method), $middleware, $callback];
