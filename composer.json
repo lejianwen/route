@@ -1,0 +1,19 @@
+{
+    "name": "ljw/route",
+    "description": "a simple route",
+    "keywords": ["route", "ljw"],
+    "homepage": "http://github.com/lejianwen/route",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "JianWen Le",
+            "email": "84855512@qq.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.6"
+    },
+    "autoload": {
+        "psr-4": {"Ljw\\Route\\": "src/Route"}
+    }
+}
