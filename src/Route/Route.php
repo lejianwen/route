@@ -88,10 +88,10 @@ class Route
                     $middle_result = $middleware();
                 } else
                 {
-                    $middle_arr = explode('@', $middleware);
-                    $middleware_class = self::$middleware_namespace . $middle_arr[0];
+                    list($middleware_class, $middleware_method) = explode('@', $middleware);
+                    $middleware_class = self::$middleware_namespace . $middleware_class;
                     $middleware_object = new $middleware_class();
-                    $middle_result = $middleware_object->$middle_arr[1]();
+                    $middle_result = $middleware_object->$middleware_method();
                 }
                 $controller = $route[1];
                 //controller是一个闭包函数
@@ -100,10 +100,10 @@ class Route
                     $controller($middle_result);
                 } else
                 {
-                    $controller_arr = explode('@', $controller);
-                    $controller_class = self::$controller_namespace . $controller_arr[0];
+                    list($controller_class, $controller_method) = explode('@', $controller);
+                    $controller_class = self::$controller_namespace . $controller_class;
                     $controller_object = new $controller_class();
-                    $controller_object->$controller_arr[1]($middle_result);
+                    $controller_object->$controller_method($middle_result);
                 }
 
             } else
@@ -116,10 +116,10 @@ class Route
                     $controller();
                 } else
                 {
-                    $controller_arr = explode('@', $controller);
-                    $controller_class = self::$controller_namespace . $controller_arr[0];
+                    list($controller_class, $controller_method) = explode('@', $controller);
+                    $controller_class = self::$controller_namespace . $controller_class;
                     $controller_object = new $controller_class();
-                    $controller_object->$controller_arr[1]();
+                    $controller_object->$controller_method();
                 }
             }
         }
@@ -150,10 +150,10 @@ class Route
                             $middle_result = $middleware(...$matched);
                         } else
                         {
-                            $middle_arr = explode('@', $middleware);
-                            $middleware_class = self::$middleware_namespace . $middle_arr[0];
+                            list($middleware_class, $middleware_method) = explode('@', $middleware);
+                            $middleware_class = self::$middleware_namespace . $middleware_class;
                             $middleware_object = new $middleware_class();
-                            $middle_result = $middleware_object->$middle_arr[1](...$matched);
+                            $middle_result = $middleware_object->$middleware_method(...$matched);
                         }
                         $controller = $route[1];
                         //controller是一个闭包函数
@@ -162,10 +162,10 @@ class Route
                             $controller($middle_result, ...$matched);
                         } else
                         {
-                            $controller_arr = explode('@', $controller);
-                            $controller_class = self::$controller_namespace . $controller_arr[0];
+                            list($controller_class, $controller_method) = explode('@', $controller);
+                            $controller_class = self::$controller_namespace . $controller_class;
                             $controller_object = new $controller_class();
-                            $controller_object->$controller_arr[1]($middle_result, ...$matched);
+                            $controller_object->$controller_method($middle_result, ...$matched);
                         }
 
                     } else
@@ -178,10 +178,10 @@ class Route
                             $controller(...$matched);
                         } else
                         {
-                            $controller_arr = explode('@', $controller);
-                            $controller_class = self::$controller_namespace . $controller_arr[0];
+                            list($controller_class, $controller_method) = explode('@', $controller);
+                            $controller_class = self::$controller_namespace . $controller_class;
                             $controller_object = new $controller_class();
-                            $controller_object->$controller_arr[1](...$matched);
+                            $controller_object->$controller_method(...$matched);
                         }
                     }
                     break;
