@@ -25,7 +25,7 @@ Route::post('index/test', 'app\\middleware\\Index@test', 'app\\controllers\\Inde
 
 ~~~
 ## 当中间件没有返回值，或者返回值为NULL时是否中断，不在进行controller
-~~~
+~~~php
 use \Ljw\Route\Route;
 Route::middleCanStop(false);  //不中断
 Route::middleCanStop(true);  //中断;默认
