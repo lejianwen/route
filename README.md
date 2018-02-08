@@ -24,7 +24,12 @@ Route::get('', 'app\\controllers\\IndexController@index');
 Route::post('index/test', 'app\\middleware\\Index@test', 'app\\controllers\\IndexController@test');
 
 ~~~
-
+## 当中间件没有返回值，或者返回值为NULL时是否中断，不在进行controller
+~~~
+use \Ljw\Route\Route;
+Route::middleCanStop(false);  //不中断
+Route::middleCanStop(true);  //中断;默认
+~~~
 ## 命名空间自定义
 
 ~~~php
