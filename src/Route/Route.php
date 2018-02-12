@@ -132,7 +132,7 @@ class Route
 
     }
 
-    public static function action($controller, $middleware = null, $matched = null)
+    public static function action($controller, $middleware = null, $matched = [])
     {
         $middle_result = null;
         if ($middleware) {
@@ -158,7 +158,7 @@ class Route
             }
         }
         //
-        if ($middle_result && !empty($matched)) {
+        if ($middle_result) {
             array_unshift($matched, $middle_result);
         }
         //controller是一个闭包函数
