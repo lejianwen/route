@@ -75,7 +75,7 @@ class Route
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         $method = $_SERVER['REQUEST_METHOD'];
         //ANY匹配所有方式
-        if (isset(self::$routes['ANY'][$uri])) {
+        if (isset(self::$routes['ANY'])) {
             self::$routes[$method] = array_merge(self::$routes['ANY'], self::$routes[$method]);
         }
         //是否匹配到路由
@@ -94,6 +94,7 @@ class Route
             $searches = array_keys(static::$patterns);
             $replaces = array_values(static::$patterns);
             foreach (self::$routes[$method] as $route_uri => $route) {
+                $route_uri = str_replace('.', '\.', $route_uri);
                 if (strpos($route_uri, ':') !== false) {
                     $route_uri = str_replace($searches, $replaces, $route_uri);
                 }
