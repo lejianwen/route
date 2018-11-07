@@ -76,7 +76,11 @@ class Route
         $method = $_SERVER['REQUEST_METHOD'];
         //ANY匹配所有方式
         if (isset(self::$routes['ANY'])) {
-            self::$routes[$method] = array_merge(self::$routes['ANY'], self::$routes[$method]);
+            if (isset(self::$routes[$method])) {
+                self::$routes[$method] = array_merge(self::$routes['ANY'], self::$routes[$method]);
+            } else {
+                self::$routes[$method] = self::$routes['ANY'];
+            }
         }
         //是否匹配到路由
         $found = false;
@@ -90,7 +94,7 @@ class Route
             self::action($route[1], $route[0]);
         }
         //匹配失败,进行正则匹配
-        if ($found == false) {
+        if ($found == false && isset(self::$routes[$method])) {
             $searches = array_keys(static::$patterns);
             $replaces = array_values(static::$patterns);
             foreach (self::$routes[$method] as $route_uri => $route) {
