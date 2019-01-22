@@ -9,13 +9,13 @@
 namespace Ljw\Route;
 
 /**
- * @method static Route get(string $route, Callable $middle = null, Callable $callback)
- * @method static Route post(string $route, Callable $middle = null, Callable $callback)
- * @method static Route put(string $route, Callable $middle = null, Callable $callback)
- * @method static Route delete(string $route, Callable $middle = null, Callable $callback)
- * @method static Route options(string $route, Callable $middle = null, Callable $callback)
- * @method static Route head(string $route, Callable $middle = null, Callable $callback)
- * @method static Route any(string $route, Callable $middle = null, Callable $callback)
+ * @method static Route get(string $route, Callable $middle = null, Callable $controller)
+ * @method static Route post(string $route, Callable $middle = null, Callable $controller)
+ * @method static Route put(string $route, Callable $middle = null, Callable $controller)
+ * @method static Route delete(string $route, Callable $middle = null, Callable $controller)
+ * @method static Route options(string $route, Callable $middle = null, Callable $controller)
+ * @method static Route head(string $route, Callable $middle = null, Callable $controller)
+ * @method static Route any(string $route, Callable $middle = null, Callable $controller)
  */
 class Route
 {
@@ -40,8 +40,10 @@ class Route
     {
         $uri = '/' . ltrim($params[0], '/');
         $middleware = isset($params[2]) ? $params[1] : null;
-        $callback = isset($params[2]) ? $params[2] : $params[1];
-        self::$routes[strtoupper($method)][$uri] = [$middleware, $callback];
+        $controller = isset($params[2]) ? $params[2] : $params[1];
+        is_string($middleware) && $middleware = self::$middleware_namespace . $middleware;
+        is_string($controller) && $controller = self::$controller_namespace . $controller;
+        self::$routes[strtoupper($method)][$uri] = [$middleware, $controller];
     }
 
     /**定义错误路由
@@ -52,7 +54,8 @@ class Route
         self::$error_callback = $callback;
     }
 
-    /**自定义命名空间
+    /**
+     * 自定义命名空间
      * @param null $controller
      * @param null $middle
      */
@@ -67,8 +70,8 @@ class Route
         self::$middle_can_stop = $can;
     }
 
-    /**运行
-     *
+    /**
+     * 运行
      */
     public static function run()
     {
@@ -150,7 +153,6 @@ class Route
                 }
             } else {
                 list($middleware_class, $middleware_method) = explode('@', $middleware);
-                $middleware_class = self::$middleware_namespace . $middleware_class;
                 $middleware_object = new $middleware_class();
                 if (!empty($matched)) {
                     $middle_result = $middleware_object->$middleware_method(...$matched);
@@ -175,7 +177,6 @@ class Route
             }
         } else {
             list($controller_class, $controller_method) = explode('@', $controller);
-            $controller_class = self::$controller_namespace . $controller_class;
             $controller_object = new $controller_class();
             if (!empty($matched)) {
                 $controller_object->$controller_method(...$matched);
