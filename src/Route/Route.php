@@ -9,17 +9,19 @@
 namespace Ljw\Route;
 
 /**
- * @method static Route get(string $route, Callable $middle = null, Callable $controller)
- * @method static Route post(string $route, Callable $middle = null, Callable $controller)
- * @method static Route put(string $route, Callable $middle = null, Callable $controller)
- * @method static Route delete(string $route, Callable $middle = null, Callable $controller)
- * @method static Route options(string $route, Callable $middle = null, Callable $controller)
- * @method static Route head(string $route, Callable $middle = null, Callable $controller)
- * @method static Route any(string $route, Callable $middle = null, Callable $controller)
+ * @method static Route get(string $route, ...$controller)
+ * @method static Route post(string $route, ...$controller)
+ * @method static Route put(string $route, ...$controller)
+ * @method static Route delete(string $route, ...$controller)
+ * @method static Route options(string $route, ...$controller)
+ * @method static Route head(string $route, ...$controller)
+ * @method static Route any(string $route, ...$controller)
  */
 class Route
 {
     public static $routes = [];
+    /** @var array $patterns_routes 正则路由 */
+    public static $patterns_routes = [];
     public static $patterns = [
         ':any' => '[^/]+',
         ':str' => '[0-9a-zA-Z_]+',
@@ -29,24 +31,60 @@ class Route
     public static $controller_namespace = null;
     public static $middleware_namespace = null;
     public static $error_callback;
-    //是否在中间件中断
-    public static $middle_can_stop = true;
+    public static $temp_middleware;
 
-    /**路由定义
+    /**
+     * 路由定义
      * @param $method
      * @param $params
      */
     public static function __callstatic($method, $params)
     {
         $uri = '/' . ltrim($params[0], '/');
-        $middleware = isset($params[2]) ? $params[1] : null;
-        $controller = isset($params[2]) ? $params[2] : $params[1];
-        is_string($middleware) && $middleware = self::$middleware_namespace . $middleware;
-        is_string($controller) && $controller = self::$controller_namespace . $controller;
-        self::$routes[strtoupper($method)][$uri] = [$middleware, $controller];
+        $middleware = [];
+        if (!empty(self::$temp_middleware)) {
+            self::prepareMiddleware(self::$temp_middleware, $middleware);
+        }
+        if (count($params) > 2) {
+            self::prepareMiddleware(array_slice($params, 1, count($params) - 2), $middleware);
+        }
+        $controller = end($params);
+        if (is_string($controller)) {
+            $controller = self::$controller_namespace . $controller;
+        }
+        if (strpos($uri, ':') !== false) {
+            self::$patterns_routes[strtoupper($method)][$uri] = [$middleware, $controller];
+        } else {
+            self::$routes[strtoupper($method)][$uri] = [$middleware, $controller];
+        }
     }
 
-    /**定义错误路由
+    public static function prepareMiddleware($middles, &$middleware)
+    {
+        foreach ($middles as $middle) {
+            if (is_string($middle)) {
+                $middleware[] = self::$middleware_namespace . $middle;
+            } elseif (is_array($middle)) {
+                self::prepareMiddleware($middle, $middleware);
+            } else {
+                $middleware[] = $middle;
+            }
+        }
+    }
+
+    /**
+     * @param string|array|\Closure $middleware
+     * @param \Closure $callback
+     */
+    public static function middleware($middleware, \Closure $callback)
+    {
+        self::$temp_middleware = [$middleware];
+        $callback();
+        self::$temp_middleware = [];
+    }
+
+    /**
+     * 定义错误路由
      * @param $callback
      */
     public static function error($callback)
@@ -65,11 +103,6 @@ class Route
         self::$middleware_namespace = $middle;
     }
 
-    public static function middleCanStop($can = true)
-    {
-        self::$middle_can_stop = $can;
-    }
-
     /**
      * 运行
      */
@@ -85,104 +118,62 @@ class Route
                 self::$routes[$method] = self::$routes['ANY'];
             }
         }
-        //是否匹配到路由
-        $found = false;
         if (isset(self::$routes[$method][$uri])) {
             $route = self::$routes[$method][$uri];
-            $found = true;
-            /*
-            * $middleware = $route[0];
-            * $controller = $route[1];
-            * */
             self::action($route[1], $route[0]);
+            return;
         }
         //匹配失败,进行正则匹配
-        if ($found == false && isset(self::$routes[$method])) {
+        if (!empty(self::$patterns_routes[$method])) {
             $searches = array_keys(static::$patterns);
             $replaces = array_values(static::$patterns);
-            foreach (self::$routes[$method] as $route_uri => $route) {
+            foreach (self::$patterns_routes[$method] as $route_uri => $route) {
                 $route_uri = str_replace('.', '\.', $route_uri);
-                if (strpos($route_uri, ':') !== false) {
-                    $route_uri = str_replace($searches, $replaces, $route_uri);
-                }
+                $route_uri = str_replace($searches, $replaces, $route_uri);
                 //正则匹配
                 if (preg_match('#^' . $route_uri . '$#', $uri, $matched)) {
-                    $found = true;
                     array_shift($matched);
-                    /*
-                     * $middleware = $route[0];
-                     * $controller = $route[1];
-                     * */
                     self::action($route[1], $route[0], $matched);
-                    break;
+                    return;
                 }
             }
         }
 
         //还是匹配失败,执行error
-        if ($found == false) {
-            //默认error
-            if (!self::$error_callback) {
-                self::$error_callback = function () {
-                    http_response_code(404);
-                    echo '404 Not Found!';
-                };
-            } else {
-                if (is_string(self::$error_callback)) {
-                    self::$method($_SERVER['REQUEST_URI'], self::$error_callback);
-                    self::$error_callback = null;
-                    self::run();
-                    return;
-                }
-            }
-            call_user_func(self::$error_callback);
+        //默认error
+        if (!self::$error_callback) {
+            self::$error_callback = function () {
+                http_response_code(404);
+                echo '404 Not Found!';
+            };
+        } elseif (is_string(self::$error_callback)) {
+            self::$method($_SERVER['REQUEST_URI'], self::$error_callback);
+            self::$error_callback = null;
+            self::run();
+            return;
         }
-
+        call_user_func(self::$error_callback);
     }
 
-    public static function action($controller, $middleware = null, $matched = [])
+    /**
+     * @param $controller
+     * @param array $middleware
+     * @param array $matched
+     */
+    public static function action($controller, $middleware = [], $matched = [])
     {
-        $middle_result = null;
-        if ($middleware) {
-            //中间件是闭包函数
-            if ($middleware instanceof \Closure) {
-                if (!empty($matched)) {
-                    $middle_result = $middleware(...$matched);
+        $pipe = new Pipeline();
+        $pipe->send($matched)->through($middleware)->then(
+            function ($matched) use ($controller) {
+                //controller是一个闭包函数
+                if ($controller instanceof \Closure) {
+                    $controller(...$matched);
                 } else {
-                    $middle_result = $middleware();
-                }
-            } else {
-                list($middleware_class, $middleware_method) = explode('@', $middleware);
-                $middleware_object = new $middleware_class();
-                if (!empty($matched)) {
-                    $middle_result = $middleware_object->$middleware_method(...$matched);
-                } else {
-                    $middle_result = $middleware_object->$middleware_method();
+                    list($controller_class, $controller_method) = explode('@', $controller);
+                    $controller_object = new $controller_class();
+                    $controller_object->$controller_method(...$matched);
                 }
             }
-            if ($middle_result === null && self::$middle_can_stop) {
-                return;
-            }
-        }
-        //
-        if ($middle_result) {
-            $matched[] = $middle_result;
-        }
-        //controller是一个闭包函数
-        if ($controller instanceof \Closure) {
-            if (!empty($matched)) {
-                $controller(...$matched);
-            } else {
-                $controller();
-            }
-        } else {
-            list($controller_class, $controller_method) = explode('@', $controller);
-            $controller_object = new $controller_class();
-            if (!empty($matched)) {
-                $controller_object->$controller_method(...$matched);
-            } else {
-                $controller_object->$controller_method();
-            }
-        }
+        );
     }
 }
