@@ -38,7 +38,7 @@ class Pipeline
     public function getSlice()
     {
         return function ($stack, $pipe) {
-            return function ($params) use ($stack, $pipe) {
+            return function ($params = []) use ($stack, $pipe) {
                 if ($pipe instanceof \Closure) {
                     return $pipe($params, $stack);
                 } elseif (!is_object($pipe)) {
@@ -57,7 +57,7 @@ class Pipeline
         $callable = array_reduce(
             array_reverse($this->pipes),
             $this->getSlice(),
-            function ($params) use ($destination) {
+            function ($params = []) use ($destination) {
                 return $destination($params);
             }
         );
