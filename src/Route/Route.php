@@ -147,12 +147,9 @@ class Route
                 echo '404 Not Found!';
             };
         } elseif (is_string(self::$error_callback)) {
-            self::$method($_SERVER['REQUEST_URI'], self::$error_callback);
-            self::$error_callback = null;
-            self::run();
-            return;
+            self::$error_callback = self::$controller_namespace . self::$error_callback;
         }
-        call_user_func(self::$error_callback);
+        self::action(self::$error_callback);
     }
 
     /**
