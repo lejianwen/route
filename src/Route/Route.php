@@ -33,6 +33,7 @@ class Route
     public static $error_callback;
     public static $temp_middleware;
 
+    public static $params = [];
     /**
      * 路由定义
      * @param $method
@@ -162,6 +163,7 @@ class Route
         $pipe = new Pipeline();
         $pipe->send($matched)->through($middleware)->then(
             function ($matched) use ($controller) {
+                Route::$params = $matched;
                 //controller是一个闭包函数
                 if ($controller instanceof \Closure) {
                     $controller(...$matched);
