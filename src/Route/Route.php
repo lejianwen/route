@@ -34,6 +34,10 @@ class Route
     public static $temp_middleware;
 
     public static $params = [];
+
+    public static $temp_groups = [];
+    public static $match_route_uri = ''; //
+
     /**
      * 路由定义
      * @param $method
@@ -52,6 +56,9 @@ class Route
         $controller = end($params);
         if (is_string($controller)) {
             $controller = self::$controller_namespace . $controller;
+        }
+        if (!empty(self::$temp_groups)) {
+            $uri = implode('/', self::$temp_groups) . $uri;
         }
         if (strpos($uri, ':') !== false) {
             self::$patterns_routes[strtoupper($method)][$uri] = [$middleware, $controller];
@@ -79,9 +86,10 @@ class Route
      */
     public static function middleware($middleware, \Closure $callback)
     {
-        self::$temp_middleware = [$middleware];
+        $old_middlewares = self::$temp_middleware;
+        self::$temp_middleware[] = [$middleware];
         $callback();
-        self::$temp_middleware = [];
+        self::$temp_middleware = $old_middlewares;
     }
 
     /**
@@ -121,6 +129,7 @@ class Route
         }
         if (isset(self::$routes[$method][$uri])) {
             $route = self::$routes[$method][$uri];
+            self::$match_route_uri = $uri;
             self::action($route[1], $route[0]);
             return;
         }
@@ -133,6 +142,7 @@ class Route
                 $route_uri = str_replace($searches, $replaces, $route_uri);
                 //正则匹配
                 if (preg_match('#^' . $route_uri . '$#', $uri, $matched)) {
+                    self::$match_route_uri = $route_uri;
                     array_shift($matched);
                     self::action($route[1], $route[0], $matched);
                     return;
@@ -174,5 +184,16 @@ class Route
                 }
             }
         );
+    }
+
+    public static function group($prefix, $callback = null)
+    {
+        $old_prefix = self::$temp_groups;
+        self::$temp_groups[] = $prefix;
+        $group = new Group();
+        $group->prefix = self::$temp_groups;
+        $callback();
+        self::$temp_groups = $old_prefix;
+        return $group;
     }
 }
